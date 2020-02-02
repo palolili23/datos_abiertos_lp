@@ -16,6 +16,7 @@ library(rio)
 library(here)
 library(tidyverse)
 library(tidytext)
+library(plotly)
 ```
 
 ```{r}
@@ -34,7 +35,8 @@ taza_alfab <- censo %>%
     values_to = "taza_alfab"
   ) %>% 
   mutate(sexo = 
-           ifelse(str_detect(sexo, "hombres"), "Niños", "Niñas"))
+           ifelse(str_detect(sexo, "hombres"), "Niños", "Niñas"),
+         taza_alfab = round(taza_alfab, 2))
 ```
 
 ```{r}
@@ -48,7 +50,7 @@ taza_alfab %>%
   scale_y_reverse() +
   theme_minimal() +
     labs(
-    title = "Distribución de la taza de alfabetización por departamento,\npara niñas y niños menores a 15 años ",
+    title = "Distribución de la taza de alfabetización por departamento,\npara niñas y niños mayores a 15 años ",
     caption = "Fuente: Censo 2012, INDEC",
     x= "",
     y = "Taza de alfabetización (%)"
@@ -64,7 +66,7 @@ taza_alfab %>%
   geom_line(color = "#ffc425") +
   facet_wrap(.~depto) +
   theme_minimal() +
-  labs(title = "Taza de alfabetización en menores de 15 años por municipio",
+  labs(title = "Taza de alfabetización en mayores de 15 años por municipio",
        x = "Niños vs. niñas",
        y = "Taza de alfabetización",
        caption = "Datos de INDEC") 
@@ -99,7 +101,7 @@ taza_alfab_dif_prov %>%
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank()) +
   labs(
-    title = "Diferencia promedio entre la taza de alfabetización de niñas y niños \nmenores a 15 años por provincia",
+    title = "Diferencia promedio entre la taza de alfabetización de niñas y niños \nmayores a 15 años por provincia",
     subtitle = "Fuente: Censo 2012",
     x = "Provincia",
     y = "Diferencia promedio",
@@ -108,7 +110,7 @@ taza_alfab_dif_prov %>%
 ```
 
 ```{r}
-taza_alfab %>% 
+lolilop <- taza_alfab %>% 
   group_by(depto, prov, sexo) %>% 
   summarize(media_alfab = mean(taza_alfab)) %>% 
   ungroup() %>% 
@@ -126,12 +128,14 @@ taza_alfab %>%
   theme(axis.text.y=element_blank(),
         axis.ticks.y=element_blank()) +
   labs(
-    title = "Taza de alfabetización promedio por provincia, \npara niñas y niños menores a 15 años ",
+    title = "Taza de alfabetización promedio por provincia, \npara niñas y niños mayores a 15 años ",
     subtitle = "En rojo la taza para niñas, en verde la taza para niños",
     caption = "Fuente: Censo 2012, INDEC",
     x= "Provincias",
     y = ""
   ) 
+
+ggplotly(lolilop)
 ```
 
 

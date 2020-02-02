@@ -1,0 +1,84 @@
+---
+title: "Partos"
+author: "Paloma"
+date: "2/1/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, include = FALSE,}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, out.width = "100%")
+```
+
+```{r}
+library(rio)
+library(here)
+library(tidyverse)
+library(tidytext)
+library(plotly)
+```
+
+```{r}
+censo <- import(here("02_datos_limpios", "censo.RData"))
+
+partos <- censo %>% 
+  select(depto, prov, municipio,t_2012, contains("ultpar")) %>% 
+  pivot_longer(
+    cols = -c(1:4),
+    names_to = "parto",
+    values_to = "cuenta"
+  ) %>% 
+  mutate(
+    parto = str_remove(parto, "_ultpar"),
+    parto = case_when(
+      parto == "est_sal" ~ "estación de salud",
+      parto == "dom" ~ "domicilio",
+      parto == "otro" ~ "otro",
+      parto == "sinesp" ~ "sin especificar"))
+
+partos <- partos %>% 
+  mutate(cuenta = str_replace(cuenta, ",", "."),
+         cuenta = parse_number(cuenta))
+
+partos %>% 
+  filter(parto %in% c("domicilio", "estación de salud")) %>% 
+  mutate(depto = str_remove(depto, "Departamento de ")) %>% 
+  ggplot(aes(depto, cuenta)) +
+  geom_boxplot(aes(color = parto)) +
+  scale_color_manual(values = c("#d11141", "#00b159")) +
+  coord_flip() +
+  theme_minimal()
+```
+
+```{r}
+library(tidytext)
+
+barras_partos <- partos %>% 
+  mutate(depto = str_remove(depto, "Departamento de ")) %>% 
+  filter(parto %in% c("domicilio", "estación de salud")) %>% 
+  group_by(depto, prov, parto) %>% 
+  summarise(
+    mediana = median(cuenta),
+    total = sum(t_2012))  %>% 
+  mutate(dif = mediana - lag(mediana)) %>% 
+  ungroup() %>% 
+  fill(dif, .direction = c("up")) %>% 
+ mutate(prov = reorder_within(prov, dif, depto)) %>% 
+  ggplot(aes(prov, mediana, fill = parto)) +
+  scale_fill_manual(values = c("#d11141", "#00b159")) +
+  geom_col() +
+  facet_wrap(.~depto, scale = "free_y") +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  labs(
+    title = "Porcentaje promedio de partos, por provincia",
+    x = "Provincia",
+    y = "Porcentaje (%)"
+  )
+
+ggplotly(barras_partos)
+```
+
