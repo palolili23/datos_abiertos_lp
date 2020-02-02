@@ -1,0 +1,159 @@
+---
+title: "La brecha en educación"
+author: "L. Paloma Rojas Saunero"
+date: "2/2/2020"
+output: 
+  html_document:
+    code_folding: hide 
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, include = FALSE,}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "100%")
+```
+
+```{r, include = FALSE}
+library(rio)
+library(here)
+library(tidyverse)
+library(tidytext)
+library(plotly)
+library(ggridges)
+```
+
+
+Mi intención es usar datos abiertos para explorar la diferencia entre mujeres y hombres respecto a los indicadores de educación.
+
+Para realizar los gráficos que presento a continuación utilicé datos que se encuentran libres y disponibles en la página [datosabiertos.bo](https://datos.gob.bo/dataset/indicadores-de-poblacion-segun-departamento-y-municipio-censo-2012/resource/102243d4-f2f4-4cdc-b26c-624eec13028b). 
+
+Los datos crudos se encuentran en la carpeta `00_datos_crudos` y el código para limpiar los datos se encuentra en el archivo `01_R`, `limpieza_datos.R`, guardé los datos ya procesados en el archivo `02_datos_limpios`.
+
+Para los gráficos que realizo en este archivo, utilizo los datos `censo.csv`.
+
+```{r, echo = TRUE}
+censo <- import(here("02_datos_limpios", "censo.csv"))
+```
+
+## Sobre los datos
+
+El archivo censo tiene información en los indicadores para 339 municipios de los 9 departamentos. Trabajaremos por municipio y resumiremos la información de los municipios por provincia. 
+
+## Indicador: Taza de alfabetización en mayores de 15 años
+
+Primero vamos a estructurar los datos para el análisis.
+
+```{r}
+taza_alfab <- censo %>% 
+  rename(
+    hombres = `h_>15`,
+    mujeres = `m_>15`) %>% 
+  select(depto, provincia, municipio, hombres, mujeres) %>% 
+  pivot_longer(
+    cols = -c(1:3),
+    names_to = "sexo",
+    values_to = "taza_alfab"
+  ) %>% 
+  mutate(taza_alfab = round(taza_alfab, 2),
+         sexo = str_to_title(sexo))
+
+```
+
+### Distribución
+
+Primero veremos la distribución de la taza de alfabetización en los municipios para cada departamento. 
+
+
+```{r}
+distribucion_taza_alfab <- taza_alfab %>% 
+  ggplot(aes(taza_alfab, depto, fill = sexo)) +
+  geom_density_ridges(alpha = 0.8) +
+  scale_fill_manual(values = c("#d11141", "#00b159" )) +
+  scale_x_reverse() +
+  theme_minimal() +
+    labs(
+    title = "Taza de alfabetización por departamento,\npara población mayor a 15 años",
+    caption = "Fuente: Censo 2012, INE",
+    x= "",
+    y = "Taza de alfabetización (%)"
+  ) +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "bottom")
+
+distribucion_taza_alfab
+```
+
+A partir de este gráfico podemos observar que:
+
+- Hay una diferencia en la taza de alfabetización entre hombres y mujeres mayores a 15 años.
+
+- Hay departamentos con una taza de alfabetización más alta que otros. 
+
+- Dentro de cada departamento, la taza de alfabetización varia entre municipios, y la variación es mayor para las mujeres.
+
+
+### Diferencia en la taza de alfabetización en hombres y mujeres mayores a 15 años, por municipio
+
+El gráfico siguiente nos ayudará a ver cómo varía la taza de alfabetización en hombres y mujeres, por municipio y departamento.
+
+```{r}
+
+grafico_dif <- taza_alfab %>% 
+  ggplot(aes(sexo, taza_alfab, group = municipio)) +
+  scale_color_manual(values = c("#d11141", "#00b159")) +
+  geom_line(color = "#ffc425") +
+  geom_point(aes(color = sexo)) +
+  facet_wrap(.~depto) +
+  theme_minimal() +
+  labs(title = "Taza de alfabetización por departamento y municipio en mayores a 15 años",
+       x = "",
+       y = "Taza de alfabetización (%)",
+       caption = "Datos de INE") +
+    theme(
+    legend.title = element_blank(),
+    legend.position = "bottom")
+
+ggplotly(grafico_dif)
+```
+
+Algunos datos llamativos del gráfico son:
+
+- En cada municipio, la taza de alfabetización en hombres es mayor que para las mujeres.
+
+- La diferencia en la taza de alfabetización entre hombres y mujeres mayores a 15 años por municipio, es más evidente para algunos departamentos.
+
+### Taza de alfabetización para hombres y mujeres, por provincia y departamento
+
+Debido a que existen varios municipios por provincia, resumiremos la información de los municipios obteniendo el promedio de la taza de alfabetización por provincia.
+
+```{r}
+grafico_lolipop <- taza_alfab %>% 
+  group_by(depto, provincia, sexo) %>% 
+  summarize(media_alfab = round(mean(taza_alfab),2)) %>% 
+  ungroup() %>% 
+  mutate(provincia = reorder_within(provincia, media_alfab, depto)) %>% 
+  pivot_wider(
+    names_from = sexo,
+    values_from = media_alfab) %>% 
+  ggplot() +
+  geom_segment(aes(x = provincia, xend = provincia, y = Mujeres, yend = Hombres), color = "#ffc425") +
+  geom_point(aes(x = provincia, y = Mujeres), color = "#d11141", size = 1.5) +
+  geom_point(aes(x = provincia, y = Hombres), color = "#00b159", size = 1.5) +
+  coord_flip() +
+  facet_wrap(.~depto, scale = "free_y") +
+  theme_minimal() +
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  labs(
+    title = "Taza de alfabetización promedio por provincia para mayores a 15 años \n\n",
+    caption = "Fuente: Censo 2012, INDEC",
+    x= "Provincias",
+    y = "Taza de alfabetización promedio (%)"
+  ) 
+
+ggplotly(grafico_lolipop)
+```
+
+Evidentemente hay una diferencia importente en la taza de alfabetización en mayores de 15 años para mujeres y hombres, en todas las provincias y departamentos de Bolivia.
+
