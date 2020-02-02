@@ -120,16 +120,15 @@ lolilop <- taza_alfab %>%
     values_from = media_alfab) %>% 
   ggplot() +
   geom_segment(aes(x = prov, xend = prov, y = Niñas, yend = Niños), color = "#ffc425") +
-  geom_point(aes(x = prov, y = Niñas), color = "#d11141", size = 2) +
-  geom_point(aes(x = prov, y = Niños), color = "#00b159", size = 2) +
+  geom_point(aes(x = prov, y = Niñas), color = "#d11141", size = 1.5) +
+  geom_point(aes(x = prov, y = Niños), color = "#00b159", size = 1.5) +
   coord_flip() +
   facet_wrap(.~depto, scale = "free_y") +
   theme_minimal() +
   theme(axis.text.y=element_blank(),
         axis.ticks.y=element_blank()) +
   labs(
-    title = "Taza de alfabetización promedio por provincia, \npara niñas y niños mayores a 15 años ",
-    subtitle = "En rojo la taza para niñas, en verde la taza para niños",
+    title = "Taza de alfabetización promedio por provincia para niñas y niños mayores a 15 años \n\n",
     caption = "Fuente: Censo 2012, INDEC",
     x= "Provincias",
     y = ""
