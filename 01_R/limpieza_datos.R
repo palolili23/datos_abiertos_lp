@@ -8,27 +8,50 @@ library(tidytext)
 
 colors <- c("#d11141", "#ffc425", "#00b159")
 
-censo <- import(here::here("00_datos_crudos", "indicadores_municipios_cpv-2012_cod.csv"))
+censo <-
+  import(here::here(
+    "00_datos_crudos",
+    "indicadores_municipios_cpv-2012_cod.csv"
+  ))
 colnames(censo)
+str(censo)
 
-deptos <- import(here::here("00_datos_crudos", "comunidades.xlsx")) %>% 
-  clean_names()
-  
-deptos <- deptos %>% 
+comunidades <- read_csv(here::here("00_datos_crudos", "comunidades.csv")) %>% 
+  clean_names() 
+
+comunidades <- comunidades %>% 
   rename(depto = x1,
-         prov = x2) %>% 
-  fill(depto, prov) %>% 
+         provincia = x2) %>% 
+  fill(depto, provincia) %>% 
   filter(!is.na(codigo))
 
-deptos <- deptos%>% 
+comunidades <- comunidades %>% 
   mutate(depto = ifelse(str_detect(depto, "Departamento de Potos"),
-                        "Departamento de Potosi", depto))
+                        "Departamento de Potosi", depto),
+         depto = str_remove(depto, "Departamento de "),
+         provincia = str_remove(provincia, "Provincia "))
+
 
 censo <- censo %>% 
-  left_join(deptos, by = c("cod.mun" = "codigo"))
+  left_join(comunidades, by = c("cod.mun" = "codigo")) %>% 
+  select(-departamento_y_municipio)
+
+variables_numericas <- 
+  
+variables_numericas <- censo %>% 
+  select(everything(),
+         -cod.mun,
+         - depto,
+         - provincia,
+         - municipio,
+         - otros_nombres) %>% 
+  colnames()
+
+censo <- censo %>% 
+  mutate_all(~str_replace(., ",", ".")) %>% 
+  mutate_at(.vars = c(variables_numericas), parse_number)
+
+str(censo)
 
 export(censo, here::here("02_datos_limpios", "censo.csv"))
-
-censo %>% 
-count(departamento_y_municipio, sort = TRUE)
 
