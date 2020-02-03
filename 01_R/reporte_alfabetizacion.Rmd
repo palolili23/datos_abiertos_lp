@@ -1,9 +1,16 @@
 ---
-title: "La brecha en educación"
+title: "La brecha en educación en Bolivia"
+subtitle: "Fuente Censo 2012"
 author: "L. Paloma Rojas Saunero"
 date: "2/2/2020"
 output: 
   html_document:
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    number_section: true
     code_folding: hide 
 editor_options: 
   chunk_output_type: console
@@ -24,13 +31,13 @@ library(ggridges)
 
 
 Mi intención es usar datos abiertos para explorar la diferencia entre mujeres y hombres respecto a los indicadores de educación. 
-Este es mi primer intento y me encantaría contactarte con más personas para que este proyecto crezca.
+Este es mi primer intento y me encantaría contactarme con más personas para que este proyecto crezca.
 
 **Disclaimer: Esta es mi forma de no mantenerme inerte frente a los conflictos sociales en mi país. La taza de feminicidio e infanticidio, de violencia contra la mujer está entre las más altas de sudamérica [_ref_](https://oig.cepal.org/es/indicadores/feminicidio). El sistema de gobierno ha sido y es patriarcal, machista y violento.**
 
 **_Si no educamos a las niñas de nuestro país, cómo esperamos que puedan emanciparse y defenderse de un problema sistémico?_**
 
-## Sobre los datos
+# Sobre los datos
 
 Para realizar los gráficos que presento a continuación utilicé datos que se encuentran libres y disponibles en la página [datosabiertos.bo](https://datos.gob.bo/dataset/indicadores-de-poblacion-segun-departamento-y-municipio-censo-2012/resource/102243d4-f2f4-4cdc-b26c-624eec13028b). 
 
@@ -42,9 +49,9 @@ Para los gráficos que realizo en este archivo, utilizo los datos `censo.csv`.
 censo <- import(here("02_datos_limpios", "censo.csv"))
 ```
 
-El archivo censo tiene información en los indicadores para 339 municipios de los 9 departamentos. Trabajaremos por municipio y resumiremos la información de los municipios por provincia. 
+El archivo `censo` tiene información en los indicadores para 339 municipios de los 9 departamentos. Trabajaremos por municipio y resumiremos la información de los municipios por provincia. 
 
-## Indicadores {.tabset .tabset-fade .tabset-pills}
+# Indicadores
 
 Evaluaremos 3 indicadores:
 
@@ -54,7 +61,7 @@ Evaluaremos 3 indicadores:
 
 - Promedio del total de años de estudio en mayores de 19 años.
 
-### Indicador: Taza de alfabetización en mayores de 15 años
+## Indicador: Taza de alfabetización en mayores de 15 años
 
 Primero vamos a estructurar los datos para el análisis.
 
@@ -74,7 +81,7 @@ taza_alfab <- censo %>%
 
 ```
 
-#### Distribución
+### Distribución
 
 Primero veremos la distribución de la taza de alfabetización en los municipios para cada departamento. 
 
@@ -108,12 +115,11 @@ A partir de este gráfico podemos observar que:
 - Dentro de cada departamento, la taza de alfabetización varia entre municipios, y la variación es mayor para las mujeres.
 
 
-#### Diferencia en la taza de alfabetización en hombres y mujeres mayores a 15 años, por municipio
+### Diferencia en la taza de alfabetización en hombres y mujeres mayores a 15 años, por municipio
 
 El gráfico siguiente nos ayudará a ver cómo varía la taza de alfabetización en hombres y mujeres, por municipio y departamento.
 
 ```{r}
-
 grafico_dif <- taza_alfab %>% 
   ggplot(aes(sexo, taza_alfab, group = municipio)) +
   scale_color_manual(values = c("#d11141", "#00b159")) +
@@ -138,7 +144,7 @@ Algunos datos llamativos del gráfico son:
 
 - La diferencia en la taza de alfabetización entre hombres y mujeres mayores a 15 años por municipio, es más evidente para algunos departamentos.
 
-#### Taza de alfabetización para hombres y mujeres, por provincia y departamento
+### Taza de alfabetización para hombres y mujeres, por provincia y departamento
 
 Debido a que existen varios municipios por provincia, resumiremos la información de los municipios obteniendo el promedio de la taza de alfabetización por provincia.
 
@@ -172,3 +178,216 @@ ggplotly(grafico_lolipop)
 
 Evidentemente hay una diferencia importente en la taza de alfabetización en mayores de 15 años para mujeres y hombres, en todas las provincias y departamentos de Bolivia.
 
+
+## Indicador: Taza de asistencia escolar en población de 6 a 19 años
+
+Primero vamos a estructurar los datos para el análisis.
+
+```{r}
+taza_asistencia <- censo %>% 
+  rename(
+    hombres = `h_ae(6_19)`,
+    mujeres = `m_ae(6_19)`) %>% 
+  select(depto, provincia, municipio, hombres, mujeres) %>% 
+  pivot_longer(
+    cols = -c(1:3),
+    names_to = "sexo",
+    values_to = "taza_ae"
+  ) %>% 
+  mutate(taza_ae = round(taza_ae, 2),
+         sexo = str_to_title(sexo))
+```
+
+### Distribución de la asistencia escolar por departamento 
+
+Ya que hay municipios donde la taza de asistencia escolar es mayor para niños que para niñas, y otras municipales dónde la diferencia es opuesta, generamos una variable para con la diferencia positiva o negativa. Esto nos permitirá resaltar las líneas que suben de las lineas que bajan. 
+
+```{r}
+distribucion_taza_asistescolar <- taza_asistencia %>%
+  ggplot(aes(taza_ae, depto, fill = sexo)) +
+  geom_density_ridges(alpha = 0.5) +
+  scale_fill_manual(values = c("#d11141", "#00b159")) +
+  scale_x_reverse() +
+  theme_minimal() +
+  labs(
+    title = "Taza de asistencia escolar por departamento para población entre 6 y 19 años",
+    caption = "Fuente: Censo 2012, INE",
+    x = "",
+    y = "Taza de asistencia escolar (%)"
+  ) +
+  theme(legend.title = element_blank(),
+        legend.position = "bottom")
+
+distribucion_taza_asistescolar
+```
+
+A partir del gráfico observamos lo siguiente: 
+
+- La distribución de la asistencia escolar es más homogenea entre hombres y mujeres.
+
+- Oruro tiene municipios con asistencia escolar menor al 40% para hombres.
+
+### Diferencia en la taza de asistencia escolar por municipio
+
+```{r}
+grafico_dif_ae <- taza_asistencia %>% 
+  pivot_wider(
+    names_from = sexo,
+    values_from = taza_ae) %>% 
+  mutate(dif = Hombres - Mujeres,
+         dif = ifelse(dif < 0, "menor", "mayor")) %>%
+  pivot_longer(
+    cols = c(Hombres, Mujeres),
+    names_to = "sexo",
+    values_to = "taza_ae") %>% 
+  ggplot(aes(sexo, taza_ae, group = municipio)) +
+  scale_color_manual(values = c("#d11141", "#ffc425",
+                                "#b28919","#00b159")) +
+  geom_path(aes(linetype = dif,
+                color = dif), 
+            show.legend = FALSE) +
+  geom_point(aes(color = sexo)) +
+  facet_wrap(.~depto) +
+  theme_minimal() +
+  labs(title = "Taza de asistencia escolar por departamento y municipio en mayores a 15 años",
+       x = "",
+       y = "Taza de asistencia escolar (%)",
+       caption = "Datos de INE") +
+    theme(legend.position = "none")
+
+ggplotly(grafico_dif_ae)
+
+```
+
+### Taza de alfabetización para hombres y mujeres, por provincia y departamento
+
+Debido a que existen varios municipios por provincia, resumiremos la información de los municipios obteniendo el promedio de la taza de alfabetización por provincia.
+
+```{r}
+lolipop_ae <- taza_asistencia %>% 
+  group_by(depto, provincia, sexo) %>% 
+  summarize(media_ae = round(mean(taza_ae),2)) %>% 
+  ungroup() %>% 
+  mutate(provincia = reorder_within(provincia, media_ae, depto)) %>% 
+  pivot_wider(
+    names_from = sexo,
+    values_from = media_ae) %>% 
+  ggplot() +
+  geom_segment(aes(x = provincia, xend = provincia, y = Mujeres, yend = Hombres), color = "#ffc425") +
+  geom_point(aes(x = provincia, y = Mujeres), color = "#d11141", size = 1.5) +
+  geom_point(aes(x = provincia, y = Hombres), color = "#00b159", size = 1.5) +
+  coord_flip() +
+  facet_wrap(.~depto, scale = "free_y") +
+  theme_minimal() +
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  labs(
+    title = "Taza de alfabetización promedio por provincia para mayores a 15 años",
+    caption = "Fuente: Censo 2012, INDEC",
+    x= "Provincias",
+    y = "Taza de alfabetización promedio (%)"
+  ) 
+
+ggplotly(lolipop_ae)
+```
+
+## Indicador: Promedio del total de años de estudio en mayores de 19 años.
+
+### Distribucion
+
+```{r}
+promedio_educ <- 
+censo %>% 
+  rename(
+    hombres = h_aest,
+    mujeres = m_aest) %>% 
+  select(depto, provincia, municipio, hombres, mujeres) %>% 
+  pivot_longer(
+    cols = -c(1:3),
+    names_to = "sexo",
+    values_to = "prom_estudios"
+  ) %>% 
+  mutate(prom_estudios = round(prom_estudios, 2),
+         sexo = str_to_title(sexo))
+
+```
+
+```{r}
+distribucion_educacion <- promedio_educ %>% 
+  ggplot(aes(prom_estudios, depto, fill = sexo)) +
+  geom_density_ridges(alpha = 0.8) +
+  scale_fill_manual(values = c("#d11141", "#00b159" )) +
+  theme_minimal() +
+    labs(
+    title = "Promedio de años de educación por departamento,\npara población mayor a 19 años",
+    caption = "Fuente: Censo 2012, INE",
+    x= "",
+    y = "Promedio de años de estudio (%)"
+  ) +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "bottom")
+
+distribucion_educacion
+```
+
+### Diferencia en la taza de asistencia escolar por municipio
+
+```{r}
+promedio_educ %>% 
+  pivot_wider(
+    names_from = sexo,
+    values_from = prom_estudios) %>% 
+  mutate(dif = Hombres - Mujeres,
+         dif = ifelse(dif < 0, "menor", "mayor")) %>%
+  pivot_longer(
+    cols = c(Hombres, Mujeres),
+    names_to = "sexo",
+    values_to = "promedio_educ") %>% 
+  ggplot(aes(sexo, promedio_educ, group = municipio)) +
+  scale_color_manual(values = c("#d11141", "#ffc425",
+                                "#b28919","#00b159")) +
+  geom_path(aes(linetype = dif,
+                color = dif), 
+            show.legend = FALSE) +
+  geom_point(aes(color = sexo)) +
+  facet_wrap(.~depto) +
+  theme_minimal() +
+  labs(title = "Promedio de años de estudio por departamento y municipio en mayores a 15 años",
+       x = "",
+       y = "Taza de asistencia escolar (%)",
+       caption = "Datos de INE") +
+    theme(legend.position = "none")
+
+ggplotly(grafico_dif_ae)
+
+```
+### Taza
+
+```{r}
+promedio_educ %>% 
+  group_by(depto, provincia, sexo) %>% 
+  summarize(media_estudios = round(mean(prom_estudios),2)) %>% 
+  ungroup() %>% 
+  mutate(provincia = reorder_within(provincia, media_estudios, depto)) %>% 
+  pivot_wider(
+    names_from = sexo,
+    values_from = media_estudios) %>% 
+  ggplot() +
+  geom_segment(aes(x = provincia, xend = provincia, y = Mujeres, yend = Hombres), color = "#ffc425") +
+  geom_point(aes(x = provincia, y = Mujeres), color = "#d11141", size = 1.5) +
+  geom_point(aes(x = provincia, y = Hombres), color = "#00b159", size = 1.5) +
+  coord_flip() +
+  facet_wrap(.~depto, scale = "free_y") +
+  theme_minimal() +
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  labs(
+    title = "Taza de alfabetización promedio por provincia para mayores a 15 años",
+    caption = "Fuente: Censo 2012, INDEC",
+    x= "Provincias",
+    y = "Taza de alfabetización promedio (%)"
+  ) 
+
+ggplotly(lolipop_ae)
+```
