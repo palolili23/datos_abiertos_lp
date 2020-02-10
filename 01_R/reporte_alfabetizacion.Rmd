@@ -366,6 +366,7 @@ dif_prom_educ <- promedio_educ %>%
 ggplotly(dif_prom_educ)
 
 ```
+
 ### Promedio de años de estudio por municipio
 
 ```{r}
