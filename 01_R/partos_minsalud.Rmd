@@ -1,0 +1,177 @@
+---
+title: "Descripción de partos atendidos 2009 - 2015"
+subtitle: "Fuente: Datos abiertos. MinSalud"
+author: "L. Paloma Rojas Saunero"
+date: "Sys.Date()"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    number_section: true
+    code_folding: hide 
+editor_options: 
+  chunk_output_type: console
+---
+
+[Fuente](https://datos.gob.bo/dataset/cantidad-y-cobertura-de-partos-institucionales)
+
+
+```{r, include = FALSE,}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "100%")
+location <- here::here()
+
+```
+
+
+# Importar archivos y generar tabla unica 
+
+```{r}
+library(tidyverse)
+library(rio)
+library(here)
+library(tidytext)
+library(plotly)
+library(gt)
+```
+
+
+```{r}
+data_dir <- paste0(location, "/00_datos_crudos/partos")
+
+rda_files <- fs::dir_ls(data_dir, regexp = "\\.csv$")
+
+```
+
+El último archivo tiene filas vacias adicionales, una variable extra "partos_atendidos_por_provincia" y el nombre de la variable "partos por personal de salud" tiene un nombre diferente al resto de variables. Por este motivo no podemos usar directamente map_df.
+
+```{r}
+data <- rda_files %>% 
+  map(read_csv2, col_types = cols(cod_dep = col_character(),
+                                      cod_mun = col_character())) %>% 
+  modify_in(7, select, -contains("x"),
+            -contains("atendidos_por_prov")) %>% 
+  modify_in(7, rename, partos_atendidos_personal_salud = partos_atendidos_por_personal_de_salud_calificado)
+
+data_completa <- map_dfr(data, bind_rows, .id = "filename")
+
+data_completa <- data_completa %>% 
+  mutate(filename = str_extract(filename, "(.)(.)(.)(.).csv$"),
+         year = parse_number(filename), 
+         cod_dep = str_remove(cod_dep, "^0"),
+         cod_mun = str_remove(cod_mun, "^0")) %>% 
+  select(- filename)
+
+```
+
+
+
+# Analisis descriptivo
+
+La tabla detalla la cantidad y cobertura de partos institucionales a nivel
+nacional; desglosado por departamentos y municipios de la gestión 2009. 
+
+
+La cobertura hace referencia al porcentaje de partos atendidos por personal de
+salud dentro o fuera del establecimiento, en relación con el total de partos
+esperados para el período analizado. Este indicador refleja la atención de
+partos atendidos por personal de salud institucionalmente, lo cual significa
+poner a disposición de las embarazadas, el personal de salud (médico,
+enfermera, auxiliar de enfermería y partera en servicio), la infraestructura,
+equipos y otros servicios del establecimiento. Mide por tanto, el nivel
+alcanzado en la atención al parto por personal de salud y en ambientes más
+seguros en periodos determinados.
+
+
+
+## Contar valores perdidos
+
+```{r}
+data_completa %>% 
+  summarise_all(~sum(is.na(.))) %>% 
+  pivot_longer(
+    cols = everything(),
+    names_to = "Variable",
+    values_to = "Cuenta"
+  ) %>% 
+  arrange(Cuenta) %>% 
+  gt()
+
+```
+
+## Partos atendidos por el servicio de salud 
+
+```{r}
+data_completa %>% 
+  ggplot(aes(as_factor(year), partos_atendidos_personal_salud, group = as_factor(cod_mun),
+             color = as_factor(cod_mun))) +
+  geom_line(show.legend = FALSE) +
+  facet_wrap(.~as_factor(departamento), scale = "free_y") +
+  theme_minimal()
+```
+
+<!-- # Datos censo 2012 -->
+
+<!-- ```{r} -->
+<!-- censo <- import(here::here("02_datos_limpios", "censo.csv")) -->
+
+<!-- partos <- censo %>%  -->
+<!--   select(depto, prov, municipio,t_2012, contains("ultpar")) %>%  -->
+<!--   pivot_longer( -->
+<!--     cols = -c(1:4), -->
+<!--     names_to = "parto", -->
+<!--     values_to = "cuenta" -->
+<!--   ) %>%  -->
+<!--   mutate( -->
+<!--     parto = str_remove(parto, "_ultpar"), -->
+<!--     parto = case_when( -->
+<!--       parto == "est_sal" ~ "estación de salud", -->
+<!--       parto == "dom" ~ "domicilio", -->
+<!--       parto == "otro" ~ "otro", -->
+<!--       parto == "sinesp" ~ "sin especificar")) -->
+
+<!-- partos <- partos %>%  -->
+<!--   mutate(cuenta = str_replace(cuenta, ",", "."), -->
+<!--          cuenta = parse_number(cuenta)) -->
+
+<!-- partos %>%  -->
+<!--   filter(parto %in% c("domicilio", "estación de salud")) %>%  -->
+<!--   mutate(depto = str_remove(depto, "Departamento de ")) %>%  -->
+<!--   ggplot(aes(depto, cuenta)) + -->
+<!--   geom_boxplot(aes(color = parto)) + -->
+<!--   scale_color_manual(values = c("#d11141", "#00b159")) + -->
+<!--   coord_flip() + -->
+<!--   theme_minimal() -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- barras_partos <- partos %>%  -->
+<!--   mutate(depto = str_remove(depto, "Departamento de ")) %>%  -->
+<!--   filter(parto %in% c("domicilio", "estación de salud")) %>%  -->
+<!--   group_by(depto, prov, parto) %>%  -->
+<!--   summarise( -->
+<!--     mediana = median(cuenta), -->
+<!--     total = sum(t_2012))  %>%  -->
+<!--   mutate(dif = mediana - lag(mediana)) %>%  -->
+<!--   ungroup() %>%  -->
+<!--   fill(dif, .direction = c("up")) %>%  -->
+<!--  mutate(prov = reorder_within(prov, dif, depto)) %>%  -->
+<!--   ggplot(aes(prov, mediana, fill = parto)) + -->
+<!--   scale_fill_manual(values = c("#d11141", "#00b159")) + -->
+<!--   geom_col() + -->
+<!--   facet_wrap(.~depto, scale = "free_y") + -->
+<!--   coord_flip() + -->
+<!--   theme_minimal() + -->
+<!--   theme(axis.text.y=element_blank(), -->
+<!--         axis.ticks.y=element_blank()) + -->
+<!--   labs( -->
+<!--     title = "Porcentaje promedio de partos, por provincia", -->
+<!--     x = "Provincia", -->
+<!--     y = "Porcentaje (%)" -->
+<!--   ) -->
+
+<!-- ggplotly(barras_partos) -->
+<!-- ``` -->
+

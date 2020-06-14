@@ -95,7 +95,6 @@ distribucion_taza_alfab <- taza_alfab %>%
   ggplot(aes(taza_alfab, depto, fill = sexo)) +
   geom_density_ridges(alpha = 0.8) +
   scale_fill_manual(values = c("#d11141", "#00b159" )) +
-  scale_x_reverse() +
   theme_minimal() +
     labs(
     title = "Taza de alfabetización por departamento,\npara población mayor a 15 años",
@@ -209,7 +208,6 @@ distribucion_taza_asistescolar <- taza_asistencia %>%
   ggplot(aes(taza_ae, depto, fill = sexo)) +
   geom_density_ridges(alpha = 0.5) +
   scale_fill_manual(values = c("#d11141", "#00b159")) +
-  scale_x_reverse() +
   theme_minimal() +
   labs(
     title = "Taza de asistencia escolar por departamento para población entre 6 y 19 años",
